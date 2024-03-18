@@ -15,6 +15,8 @@ from django.contrib.auth.models import User
 from django.http import JsonResponse
 import re
 from django.conf import settings
+import openai
+from string import punctuation
 
 BASE_DIR = settings.BASE_DIR
 def index(request):
@@ -139,9 +141,7 @@ def createAccount(request):
         user  = authenticate(request , username = username , password = password)
         if user:
             auth_login(request , user)
-            return JsonResponse({'status': 'success'})
-        else:
-            print("Password doesnot same")    
+            return JsonResponse({'status': 'success'}) 
     return JsonResponse({'status': 'error', 'message': 'Some thing went wrong'})
 
 def submitRecord(request):
@@ -181,3 +181,37 @@ def download(request):
     finally:
         if os.path.exists(zip_main_dir):
             os.remove(zip_main_dir)
+def has_special_characters(user_input):
+    return any(char in punctuation for char in user_input)
+
+def remove_special_characters(user_input):
+    cleaned_input = ''.join(char for char in user_input if char.isalnum() or char.isspace())
+    return cleaned_input
+
+def language_translator(request):
+    if request.method == "POST":
+        inputLang = request.POST["input_lang"]
+        outputLang = request.POST["output_lang"]
+        inputText = request.POST["user_input"]
+      
+        if len(inputText) == 0:
+            inputText = "You are not allowed to send empty"
+        if has_special_characters(inputText):
+            inputText = remove_special_characters(inputText)
+            if len(inputText) == 0:
+                inputText = "nothing here to show."
+        response = client.chat.completions.create(
+        model="gpt-3.5-turbo-16k-0613",
+        messages=[
+                {"role": "system", "content": f"You are a language converter specializing in translating {inputLang} to {outputLang}. Please provide clear and concise sentences for translation. If translation not found send error message in {outputLang} language. Do not use other language exept {outputLang}"},
+                {"role": "user", "content": inputText}
+            ]
+        )
+        response = response.choices[0].message.content.strip()
+
+        return JsonResponse({'status' : 'success' , 'message' : response})
+    return render(request , "translator.html")
+
+def chat_crafters(request):
+
+    return render(request , "craftes.html")
