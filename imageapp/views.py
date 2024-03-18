@@ -18,7 +18,9 @@ from django.conf import settings
 import openai
 from string import punctuation
 
+
 BASE_DIR = settings.BASE_DIR
+
 def index(request):
     return render(request,"index.html")
 
