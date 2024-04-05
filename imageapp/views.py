@@ -18,6 +18,14 @@ from django.conf import settings
 import openai
 from string import punctuation
 
+from .serializers import *
+from rest_framework.views import APIView
+from rest_framework.renderers import JSONRenderer
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework.authtoken.models import Token
+
+
 
 BASE_DIR = settings.BASE_DIR
 
@@ -112,39 +120,48 @@ def applyAlgo(zip_path,number_of_folder , image_title):
     if os.path.exists(zip_path):
         os.remove(zip_path)
 
+@api_view(['POST'])
 def createAccount(request):
-    if request.method == "POST":
-        username = request.POST.get('username')
-        email = request.POST.get('email')
-        password = request.POST.get('password')
-        confirmPassword = request.POST.get('confirmPassword')
+    data = request.data
+    serializer = UserSerializer(data = data)
+    print(serializer)
+    serializer.save()
+    return Response({'status' :200 , 'payload' : data , 'message' : "Saved in DB"})
+
+    # if request.method == "POST":
+    #     username = request.POST.get('username')
+    #     email = request.POST.get('email')
+    #     password = request.POST.get('password')
+    #     confirmPassword = request.POST.get('confirmPassword')
     
-        if password != confirmPassword:
-            return JsonResponse({'status': 'error', 'message': 'Passwords do not match.'})
+    #     if password != confirmPassword:
+    #         return JsonResponse({'status': 'error', 'message': 'Passwords do not match.'})
         
-        if not re.match("^[a-zA-Z0-9]+$", username):
-            return JsonResponse({'status': 'error', 'message': 'Username can only contain alphanumeric characters.'})
+    #     if not re.match("^[a-zA-Z0-9]+$", username):
+    #         return JsonResponse({'status': 'error', 'message': 'Username can only contain alphanumeric characters.'})
 
-        if User.objects.filter(username=username).exists():
-            return JsonResponse({'status': 'error', 'message': 'Username is already taken. Choose a different one.'})
+    #     if User.objects.filter(username=username).exists():
+    #         return JsonResponse({'status': 'error', 'message': 'Username is already taken. Choose a different one.'})
 
-        if User.objects.filter(email=email).exists():
-            return JsonResponse({'status': 'error', 'message': 'Email is already registered. Choose a different one.'})
+    #     if User.objects.filter(email=email).exists():
+    #         return JsonResponse({'status': 'error', 'message': 'Email is already registered. Choose a different one.'})
 
-        if not (any(c.isalpha() for c in password) and any(c.isdigit() for c in password) and any(c in "!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~" for c in password) and len(password) >= 8):
-            return JsonResponse({'status': 'error', 'message': 'Enter password containing numeric digits, alphabets and special chracters.'})
+    #     if not (any(c.isalpha() for c in password) and any(c.isdigit() for c in password) and any(c in "!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~" for c in password) and len(password) >= 8):
+    #         return JsonResponse({'status': 'error', 'message': 'Enter password containing numeric digits, alphabets and special chracters.'})
     
-        user = User.objects.create_user(
-            username = username,
-            email=email,
-            password=password
-        )
+    #     user = User.objects.create_user(
+    #         username = username,
+    #         email=email,
+    #         password=password
+    #     )
         
-        user  = authenticate(request , username = username , password = password)
-        if user:
-            auth_login(request , user)
-            return JsonResponse({'status': 'success'}) 
-    return JsonResponse({'status': 'error', 'message': 'Some thing went wrong'})
+    #     user  = authenticate(request , username = username , password = password)
+    #     if user:
+    #         auth_login(request , user)
+    #         return JsonResponse({'status': 'success'}) 
+    
+    # return JsonResponse({'status': 'error', 'message': 'Some thing went wrong'})
+
 
 def submitRecord(request):
     if request.method == "POST":
