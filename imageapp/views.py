@@ -25,8 +25,6 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 
-
-
 BASE_DIR = settings.BASE_DIR
 
 def index(request):
@@ -120,47 +118,23 @@ def applyAlgo(zip_path,number_of_folder , image_title):
     if os.path.exists(zip_path):
         os.remove(zip_path)
 
-@api_view(['POST'])
-def createAccount(request):
-    data = request.data
-    serializer = UserSerializer(data = data)
-    print(serializer)
-    serializer.save()
-    return Response({'status' :200 , 'payload' : data , 'message' : "Saved in DB"})
-
-    # if request.method == "POST":
-    #     username = request.POST.get('username')
-    #     email = request.POST.get('email')
-    #     password = request.POST.get('password')
-    #     confirmPassword = request.POST.get('confirmPassword')
-    
-    #     if password != confirmPassword:
-    #         return JsonResponse({'status': 'error', 'message': 'Passwords do not match.'})
-        
-    #     if not re.match("^[a-zA-Z0-9]+$", username):
-    #         return JsonResponse({'status': 'error', 'message': 'Username can only contain alphanumeric characters.'})
-
-    #     if User.objects.filter(username=username).exists():
-    #         return JsonResponse({'status': 'error', 'message': 'Username is already taken. Choose a different one.'})
-
-    #     if User.objects.filter(email=email).exists():
-    #         return JsonResponse({'status': 'error', 'message': 'Email is already registered. Choose a different one.'})
-
-    #     if not (any(c.isalpha() for c in password) and any(c.isdigit() for c in password) and any(c in "!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~" for c in password) and len(password) >= 8):
-    #         return JsonResponse({'status': 'error', 'message': 'Enter password containing numeric digits, alphabets and special chracters.'})
-    
-    #     user = User.objects.create_user(
-    #         username = username,
-    #         email=email,
-    #         password=password
-    #     )
-        
-    #     user  = authenticate(request , username = username , password = password)
-    #     if user:
-    #         auth_login(request , user)
-    #         return JsonResponse({'status': 'success'}) 
-    
-    # return JsonResponse({'status': 'error', 'message': 'Some thing went wrong'})
+class createAccount(APIView):
+    def post(self, request):
+        serializer = UserSerilizer(data=request.data)
+        if serializer.is_valid():
+            mail = request.data.get('email', '')
+            if mail:
+                existing_users = User.objects.filter(email=mail)
+                if existing_users.exists():
+                    return Response({'status': 403, 'message': 'Email already exists'})
+                else:
+                    serializer.save()
+                    user = User.objects.get(username=serializer.data['username'])
+                    token_obj, _ = Token.objects.get_or_create(user=user)
+                    return Response({'status': 200 , 'message' : "Success"})
+            else:
+                return Response({'status': 403, 'message': 'Email is required'})
+        return Response({'status': 404, 'message': serializer.errors})
 
 
 def submitRecord(request):
