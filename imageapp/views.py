@@ -17,7 +17,7 @@ import re
 from django.conf import settings
 import openai
 from string import punctuation
-
+from rest_framework import status
 from .serializers import *
 from rest_framework.views import APIView
 from rest_framework.renderers import JSONRenderer
@@ -122,20 +122,15 @@ class createAccount(APIView):
     def post(self, request):
         serializer = UserSerilizer(data=request.data)
         if serializer.is_valid():
-            mail = request.data.get('email', '')
-            if mail:
-                existing_users = User.objects.filter(email=mail)
-                if existing_users.exists():
-                    return Response({'status': 403, 'message': 'Email already exists'})
-                else:
-                    serializer.save()
-                    user = User.objects.get(username=serializer.data['username'])
-                    token_obj, _ = Token.objects.get_or_create(user=user)
-                    return Response({'status': 200 , 'message' : "Success"})
-            else:
-                return Response({'status': 403, 'message': 'Email is required'})
-        return Response({'status': 404, 'message': serializer.errors})
-
+            username = serializer.validated_data.get('username')
+            email = serializer.validated_data.get('email')
+            password = serializer.validated_data.get('password')
+            if User.objects.filter(email=email).exists():
+                return Response({'status': 400, 'message': 'Email already exists'})
+            user = User.objects.create_user(username=username, email=email, password=password)
+            token, _ = Token.objects.get_or_create(user=user)
+            return Response({'status': 200, 'message': 'User created successfully', 'token': token.key})
+        return Response({'status': 400, 'message': 'Invalid data provided', 'errors': serializer.errors})
 
 def submitRecord(request):
     if request.method == "POST":
@@ -181,29 +176,30 @@ def remove_special_characters(user_input):
     cleaned_input = ''.join(char for char in user_input if char.isalnum() or char.isspace())
     return cleaned_input
 
-def language_translator(request):
-    if request.method == "POST":
-        inputLang = request.POST["input_lang"]
-        outputLang = request.POST["output_lang"]
-        inputText = request.POST["user_input"]
-      
-        if len(inputText) == 0:
-            inputText = "You are not allowed to send empty"
-        if has_special_characters(inputText):
-            inputText = remove_special_characters(inputText)
+class text_language(APIView):
+    def post(self , request):
+        serializer = translationSerilizer(data=request.data)
+        if serializer.is_valid():
+            inputText = serializer.validated_data.get('input_text')
+            inputLang = serializer.validated_data.get('input_language')
+            outputLang = serializer.validated_data.get('output_language')
             if len(inputText) == 0:
-                inputText = "nothing here to show."
-        response = client.chat.completions.create(
-        model="gpt-3.5-turbo-16k-0613",
-        messages=[
-                {"role": "system", "content": f"You are a language converter specializing in translating {inputLang} to {outputLang}. Please provide clear and concise sentences for translation. If translation not found send error message in {outputLang} language. Do not use other language exept {outputLang}"},
-                {"role": "user", "content": inputText}
-            ]
-        )
-        response = response.choices[0].message.content.strip()
-
-        return JsonResponse({'status' : 'success' , 'message' : response})
-    return render(request , "translator.html")
+                inputText = "You are not allowed to send empty"
+            if has_special_characters(inputText):
+                inputText = remove_special_characters(inputText)
+                if len(inputText) == 0:
+                    inputText = "nothing here to show."
+            output = client.chat.completions.create(
+            model="gpt-3.5-turbo-16k-0613",
+            messages=[
+                    {"role": "system", "content": f"You are a language converter specializing in translating {inputLang} to {outputLang}. Please provide clear and concise sentences for translation. If translation not found send error message in {outputLang} language. Do not use other language exept {outputLang}"},
+                    {"role": "user", "content": inputText}
+                ]
+            )
+            output = output.choices[0].message.content.strip()
+            return Response({'status': 200, 'output_text': output})
+        else:
+            return Response({'status': 403, 'errors': serializer.errors}, status=status.HTTP_403_FORBIDDEN)
 
 def chat_crafters(request):
 

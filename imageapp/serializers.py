@@ -6,6 +6,10 @@ class UserSerilizer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['username' , 'email' , 'password']
+class translationSerilizer(serializers.Serializer):
+    input_text = serializers.CharField(max_length=1050)
+    input_language = serializers.CharField(max_length=100)
+    output_language = serializers.CharField(max_length=100)
 
 # class LoginUserSerializer(serializers.ModelSerializer):
 #     class Meta:
