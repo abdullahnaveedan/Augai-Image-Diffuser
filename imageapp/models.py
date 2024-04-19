@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 # Create your models here.
 
@@ -23,3 +24,16 @@ class multiImg(models.Model):
     input_image = models.ImageField(upload_to="multipleImage")
     def __str__(self):
         return self.image_title 
+
+class chatbot(models.Model):
+    BOT_CHOICES = [
+        ('Health', 'Health Assistant'),
+        ('Law', 'Law Assistant'),
+    ]
+    username = models.ForeignKey(User, on_delete=models.CASCADE)
+    question = models.CharField(max_length = 1000)
+    answer = models.TextField()
+    botname = models.CharField(max_length=50,choices=BOT_CHOICES)
+    def __str__(self):
+        return f'{self.username} => {self.botname}'
+    

@@ -190,7 +190,7 @@ class text_language(APIView):
                 if len(inputText) == 0:
                     inputText = "nothing here to show."
             output = client.chat.completions.create(
-            model="gpt-3.5-turbo-16k-0613",
+            model="gpt-4",
             messages=[
                     {"role": "system", "content": f"You are a language converter specializing in translating {inputLang} to {outputLang}. Please provide clear and concise sentences for translation. If translation not found send error message in {outputLang} language. Do not use other language exept {outputLang}"},
                     {"role": "user", "content": inputText}
@@ -201,6 +201,67 @@ class text_language(APIView):
         else:
             return Response({'status': 403, 'errors': serializer.errors}, status=status.HTTP_403_FORBIDDEN)
 
-def chat_crafters(request):
+class chatbotapi(APIView):
+    def post(self , request):
+        serializer = health_assistance_serializers(data=request.data)
+        if serializer.is_valid():
+            username = serializer.validated_data.get('username')
+            botname = serializer.validated_data.get('botname')
+            inputText = serializer.validated_data.get('question')
+            
+            if len(inputText) == 0:
+                inputText = "You are not allowed to send empty"
+                return Response({'status': 200, 'bot_reply': inputText})
+            if has_special_characters(inputText):
+                inputText = remove_special_characters(inputText)
+                if len(inputText) == 0:
+                    inputText = "Your message has been removed."
+                    return Response({'status': 200, 'bot_reply': inputText})
+                
+            if botname == "Health":
+                print("botname : " , botname)
+                gpt_response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                        {"role": "system", "content": "You are a virtual health assistant. Users can provide symptoms, and you are responsible for providing accurate medical advice and prescriptions. "
+                                                        "For example, you can ask 'What symptoms are you experiencing?' or 'Do you have any pre-existing conditions?' "
+                                                        "Your goal is to assist users in managing their health effectively and providing appropriate medical guidance."
+                                                        "Donot start with  I'm sorry to hear you're not feeling well"
+                        },
+                        {"role": "user", "content": inputText}
+                    ]
+                ) 
+            if botname == "Law":
+                gpt_response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                            {
+                            "role": "system","content": "You are a virtual legal assistant. Users can seek legal advice and guidance from you. "
+                                    "Your responsibilities include providing accurate legal information, advice on legal procedures, "
+                                    "and assistance in understanding legal documents. "
+                                    "You can ask users about their legal issues, case details, and any relevant information to provide tailored recommendations. "
+                                    "For example, you can ask 'What legal issue are you facing?' or 'Do you have any relevant documents or contracts?' "
+                                    "Your goal is to help users navigate legal matters effectively and provide appropriate legal guidance."
+                                    "answer should be short and to the point"
+                        },
+                        {"role": "user", "content": inputText}
+                    ]
+                )
+            gpt_response = gpt_response.choices[0].message.content.strip()
+            chatbot_instance = chatbot(username=username, question=inputText, answer=gpt_response, botname='Health')
+            chatbot_instance.save()  
 
+            return Response({'status': 200, 'output_text': gpt_response})
+        else:
+            return Response({'status': 403, 'errors': serializer.errors}, status=status.HTTP_403_FORBIDDEN)
+
+class FetchUserIdView(APIView):
+    def post(self, request):
+        serializer = UserIdSerializer(data=request.data)
+        if serializer.is_valid():
+            user_id = serializer.validated_data['username']
+            return Response({'user_id': user_id})
+        return Response(serializer.errors, status=400)
+
+def chat_crafters(request):
     return render(request , "craftes.html")

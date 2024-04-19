@@ -5,3 +5,4 @@ from .models import *
 admin.site.register(imageinfo)
 admin.site.register(zipinfo)
 admin.site.register(multiImg)
+admin.site.register(chatbot)

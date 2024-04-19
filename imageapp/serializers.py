@@ -10,7 +10,19 @@ class translationSerilizer(serializers.Serializer):
     input_text = serializers.CharField(max_length=1050)
     input_language = serializers.CharField(max_length=100)
     output_language = serializers.CharField(max_length=100)
+class health_assistance_serializers(serializers.ModelSerializer):
+    class Meta:
+        model = chatbot
+        exclude = ['id' , 'answer']
+class UserIdSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150)
 
+    def validate_username(self, value):
+        try:
+            user = User.objects.get(username=value)
+            return user.id
+        except User.DoesNotExist:
+            raise serializers.ValidationError("User with this username does not exist.")
 # class LoginUserSerializer(serializers.ModelSerializer):
 #     class Meta:
 #         model = User
