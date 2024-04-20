@@ -23,6 +23,12 @@ class UserIdSerializer(serializers.Serializer):
             return user.id
         except User.DoesNotExist:
             raise serializers.ValidationError("User with this username does not exist.")
+class RagBotSerializers(serializers.ModelSerializer):
+    class Meta:
+        model = ragbotmodel
+        exclude = ['id']
+class ragbotqa(serializers.Serializer):
+    input_text = serializers.CharField(max_length=1050)
 # class LoginUserSerializer(serializers.ModelSerializer):
 #     class Meta:
 #         model = User

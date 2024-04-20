@@ -24,8 +24,21 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
+from django.contrib.sessions.models import Session
+import dill
+
+from PyPDF2 import PdfReader
+from langchain_openai.embeddings import OpenAIEmbeddings
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.vectorstores import FAISS
+from langchain.chains.question_answering import load_qa_chain
+from langchain.llms import OpenAI
+from typing_extensions import Concatenate
 
 BASE_DIR = settings.BASE_DIR
+
+document_search = None
+chain = None
 
 def index(request):
     return render(request,"index.html")
@@ -219,7 +232,6 @@ class chatbotapi(APIView):
                     return Response({'status': 200, 'bot_reply': inputText})
                 
             if botname == "Health":
-                print("botname : " , botname)
                 gpt_response = client.chat.completions.create(
                 model="gpt-4",
                 messages=[
@@ -248,7 +260,7 @@ class chatbotapi(APIView):
                     ]
                 )
             gpt_response = gpt_response.choices[0].message.content.strip()
-            chatbot_instance = chatbot(username=username, question=inputText, answer=gpt_response, botname='Health')
+            chatbot_instance = chatbot(username=username, question=inputText, answer=gpt_response, botname=botname)
             chatbot_instance.save()  
 
             return Response({'status': 200, 'output_text': gpt_response})
@@ -263,5 +275,56 @@ class FetchUserIdView(APIView):
             return Response({'user_id': user_id})
         return Response(serializer.errors, status=400)
 
+class ragChatBot(APIView):
+    def post(self, request, format=None):
+        global document_search, chain
+        serializer = RagBotSerializers(data=request.data) 
+        if serializer.is_valid():
+            user_id = serializer.validated_data['username']  
+            try:
+                existing_record = ragbotmodel.objects.get(username=user_id)                
+                if existing_record.file:
+                    file_path = existing_record.file.path
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                    existing_record.delete()
+                
+            except ragbotmodel.DoesNotExist:
+                pass
+            except Exception as e:
+                print("Error:", str(e))
+            serializer.save()
+            pdf_file_path = ragbotmodel.objects.get(username=user_id).file.path
+            pdfreader = PdfReader(pdf_file_path)
+            raw_text = ''
+            for i, page in enumerate(pdfreader.pages):
+                content = page.extract_text()
+            
+            if content:
+                raw_text += content
+            
+            text_splitter = CharacterTextSplitter(
+                separator = "\n",
+                chunk_size = 800,
+                chunk_overlap = 200,
+                length_function = len,
+            )
+            texts =  text_splitter.split_text(raw_text)
+            embeddings = OpenAIEmbeddings()
+            document_search = FAISS.from_texts (texts, embeddings)
+            chain = load_qa_chain(OpenAI(), chain_type="stuff")
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ragbotqanda(APIView):
+    def post(self , request):
+        serializer = ragbotqa(data=request.data)
+        if serializer.is_valid():
+            query = serializer.validated_data.get('input_text')
+            docs = document_search.similarity_search(query)
+            output = chain.run(input_documents=docs, question=query)
+            return Response({'status': 200, 'output_text': output})
+        return Response({'status': 403, 'errors': serializer.errors}, status=status.HTTP_403_FORBIDDEN)
+        
 def chat_crafters(request):
     return render(request , "craftes.html")

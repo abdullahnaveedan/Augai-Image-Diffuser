@@ -36,4 +36,8 @@ class chatbot(models.Model):
     botname = models.CharField(max_length=50,choices=BOT_CHOICES)
     def __str__(self):
         return f'{self.username} => {self.botname}'
-    
+class ragbotmodel(models.Model):
+    username = models.ForeignKey(User, on_delete=models.CASCADE)
+    file = models.FileField(upload_to="ragfiles")
+    def __str__(self):
+        return str(self.username)

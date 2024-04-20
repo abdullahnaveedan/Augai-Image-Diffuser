@@ -2,7 +2,7 @@ from django.urls import path
 from . import views
 from django.conf.urls.static import static
 from django.conf import settings
-from .views import createAccount , text_language , chatbotapi , FetchUserIdView
+from .views import createAccount , text_language , chatbotapi , FetchUserIdView , ragChatBot , ragbotqanda
 urlpatterns = [
     path('', views.index, name="index"),
     path("diffuse-image/", views.diffuseImg, name="diffuseImage"),
@@ -16,4 +16,6 @@ urlpatterns = [
     path("api/assistant/chatbot/", chatbotapi.as_view()), # API for Chat assistant
     path("api/fetch/id/", FetchUserIdView.as_view()),
     path("chat-crafters/", views.chat_crafters, name="ChatCrafters"),
+    path("api/chat/rag/file-upload/", ragChatBot.as_view()), # API for rag chatbot file upload and train
+    path("api/chat/rag/q&a/", ragbotqanda.as_view()),
 ] + static(settings.MEDIA_URL, document_root = settings.MEDIA_ROOT)
